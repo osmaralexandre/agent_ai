@@ -1,0 +1,112 @@
+# Alembic - Database Migrations
+
+This README contains the main Alembic commands for the **Agent** project.
+
+First, run the postgres database:
+```bash
+# Running postgres database
+docker-compose up -d
+```
+
+## 📋 Prerequisites
+
+```bash
+# Install Alembic
+pip install alembic
+
+# Or using uv (recommended for this project)
+uv add alembic
+```
+
+## 🚀 Basic Commands
+
+### Initialization
+```bash
+# Initialize Alembic in a project
+alembic init alembic
+```
+
+### Create Migrations
+```bash
+# Create a new revision/migration
+alembic revision -m "migration description"
+
+# Example
+alembic revision -m "create_table_embeddings"
+```
+
+### Run Migrations
+```bash
+# Run all pending migrations (update to latest version)
+alembic upgrade head
+
+# Run a specific migration
+alembic upgrade <revision_id>
+
+# Run only the next migration
+alembic upgrade +1
+```
+
+### Revert Migrations
+```bash
+# Revert the last migration
+alembic downgrade -1
+
+# Revert to a specific revision
+alembic downgrade <revision_id>
+
+# Revert all migrations
+alembic downgrade base
+```
+
+## 📊 Information Commands
+
+### Status and History
+```bash
+# Check current revision
+alembic current
+
+# Show revision history
+alembic history
+
+# Show detailed history
+alembic history --verbose
+
+# Show information about a specific revision
+alembic show <revision_id>
+```
+
+### Migration Verification
+```bash
+# Check if there are pending migrations
+alembic check
+
+# Show differences between revisions
+alembic diff <revision_id>
+```
+
+## 🗄️ Project Structure
+
+### Existing Migrations
+- `ff5ac0a1173e` - Creation of `agent` schema
+- `913a4cd307d1` - Creation of `embeddings` table with vector support
+
+### Main Tables
+- **embeddings**: Stores text embeddings with similarity search
+  - Support for 1536-dimensional vectors (OpenAI)
+  - HNSW index for efficient search
+  - Unique hash to avoid duplicates
+
+## ⚙️ Configuration
+
+### Environment Variables
+Make sure the following variables are configured:
+```bash
+DB_DATABASE=agent_ai
+DB_USER=postgres
+DB_PASSWORD=password
+DB_HOST=localhost
+DB_PORT=5432
+```
+
+For more information, see the [official Alembic documentation](https://alembic.sqlalchemy.org/).

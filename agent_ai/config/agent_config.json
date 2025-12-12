@@ -1,0 +1,53 @@
+{
+    "brain_agents": {
+        "input_guardrail": {
+            "model": "gpt-4o-mini",
+            "enabled": true,
+            "temperature": 0.2,
+            "prompt_name": "input_guardrail",
+            "use_context": false,
+            "use_memory_history": false
+        },
+        "rewriter": {
+            "model": "gpt-4o-mini",
+            "enabled": true,
+            "temperature": 0.2,
+            "prompt_name": "rewrite_query_by_memory",
+            "use_context": false,
+            "use_memory_history": true
+        }
+    },
+    "tool_agents": {
+        "energy_only": {
+            "model": "gpt-4o-mini",
+            "enabled": true,
+            "temperature": 0.5,
+            "prompt_name": "energy_only",
+            "use_context": false,
+            "use_memory_history": true
+        },
+        "user_manual": {
+            "model": "gpt-4o-mini",
+            "enabled": true,
+            "temperature": 0.3,
+            "prompt_name": "user_manual",
+            "use_context": true,
+            "use_memory_history": false
+        }
+    },
+    "embeddings": {
+        "model": "text-embedding-3-small",
+        "dimensions": 1536
+    },
+    "short_term_memory": {
+        "memory_size": 10,
+        "link": "redis://localhost:6379"
+    },
+    "long_term_memory": {
+        "rag_search_k": 3
+    },
+    "logging": {
+        "level": "INFO",
+        "format": "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+    }
+}

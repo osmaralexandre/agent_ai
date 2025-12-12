@@ -1,0 +1,8 @@
+[flake8]
+ignore = E24,W504,W503,E203,E501,E712
+select = C,E,F,W,B,B9,T
+max-line-length = 79
+max-doc-length = 79
+exclude = .git,__pycache__,__init__.py,.mypy_cache,.pytest_cache,docs,.venv
+max-complexity = 10
+indent-size = 4

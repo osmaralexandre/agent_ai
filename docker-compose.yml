@@ -1,0 +1,31 @@
+version: '3.8'
+
+services:
+  db_agent_ai:
+    image: ankane/pgvector:latest
+    container_name: db_agent_ai
+    restart: always
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: agent_ai
+    ports:
+      - "5432:5432"
+    volumes:
+      - db_agent_ai_data:/var/lib/postgresql/data
+
+  redis_agent_ai:
+    image: redis/redis-stack:latest
+    container_name: redis_agent_ai
+    restart: always
+    ports:
+      - "6379:6379"
+      - "8001:8001"  # UI web opcional (RedisInsight embutido)
+    environment:
+      - REDIS_ARGS=--save 60 1 --appendonly yes
+    volumes:
+      - redis_agent_ai_data:/data
+
+volumes:
+  db_agent_ai_data:
+  redis_agent_ai_data:

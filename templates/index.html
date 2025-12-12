@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta http-equiv="X-UA-Compatible" />
+
+  <title>{{name}}</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Roboto+Condensed:wght@700&display=swap');
+
+    body {
+      background: #fcfcfc;
+      font-family: Roboto Condensed, Lato, Tahoma, sans-serif;
+      font-weight: bold;
+      color: #243200
+    }
+
+    a {
+      color: #2e282a;
+      text-decoration: none;
+      padding: 20px;
+      margin-top: 10px;
+      position: relative;
+      top: 30px;
+    }
+
+    a:hover {
+      color: white;
+      background: #f77903;
+    }
+
+    #hello {
+      position: relative;
+      top: 0%;
+      text-align: center;
+      transform: translateY(0%);
+    }
+
+    #logo {
+      position: relative;
+      top: 0%;
+      text-align: center;
+      transform: translateY(0%);
+    }
+
+    #running {
+      position: relative;
+      bottom: 0%;
+      text-align: center;
+      transform: translateY(30%);
+    }
+  </style>
+</head>
+
+<body>
+  <div id="main">
+    <div id="hello">
+      <h1>HELLO!</h1>
+      <div id="running">
+        <p><b></b>{{name}}, Up and Running!</p>
+        <h2><a href='docs'>Want some Docs? <i class="fas fa-book"></i></a></h2>
+      </div>
+    </div>
+</body>
+
+</html>
