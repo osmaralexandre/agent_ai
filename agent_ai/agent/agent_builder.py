@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 from langchain.schema import HumanMessage, SystemMessage
 from langchain_community.callbacks import get_openai_callback
@@ -7,6 +7,7 @@ from langchain_openai import ChatOpenAI
 
 from agent_ai.memory.memory_manager import MemoryProvider
 from agent_ai.utils.read_files import FileUtils
+from server.schemas import reference
 
 
 # =============================================================================
@@ -64,6 +65,15 @@ class Agent:
         self.short_term_memory_provider = short_term_memory_provider
         self.long_term_memory_provider = long_term_memory_provider
         self.context_text = context_text
+        structured_output_name = config.get("structured_output")
+        self.structured_output = (
+            getattr(reference, structured_output_name)
+            if isinstance(structured_output_name, str)
+            else None
+        )
+        self.structured_output_mode = config.get(
+            "structured_output_mode", None
+        )
         # Load system prompt
         self.system_prompt = FileUtils.read_text(
             prompt_dir / f"{self.prompt_name}.txt"
@@ -120,7 +130,9 @@ class Agent:
     # -------------------------------------------------------------------------
     #  Long Term Memory formatting
     # -------------------------------------------------------------------------
-    def _format_long_term_memory_as_text(self, user_input: str) -> str:
+    def _format_long_term_memory_as_text(
+        self, user_input: str
+    ) -> Tuple[str, dict]:
         """
         Build a formatted text representation of long-term memory.
 
@@ -130,23 +142,31 @@ class Agent:
             Long-term memory block formatted as plain text, or empty string if disabled.
         """
 
+        long_term_memory_embedding_cost = {
+            "tokens_prompt": 0,
+            "tokens_completion": 0,
+            "tokens_total": 0,
+            "cost_usd": 0,
+        }
         if not self.use_memory_history or not self.long_term_memory_provider:
-            return ""
+            return "", long_term_memory_embedding_cost
 
-        history = self.long_term_memory_provider.get_messages(
-            query=user_input,
-            top_n=3,
+        history, long_term_memory_embedding_cost = (
+            self.long_term_memory_provider.get_messages(
+                query=user_input,
+                top_n=3,
+            )
         )
 
         if not history:
-            return ""
+            return "", long_term_memory_embedding_cost
 
         lines = ["Histórico da conversa (não continuar, apenas referência):"]
         for item in history:
             role = "Usuário" if item["role"] == "user" else "Assistente"
             lines.append(f"{role}: {item['message']}")
 
-        return "\n".join(lines)
+        return "\n".join(lines), long_term_memory_embedding_cost
 
     # -------------------------------------------------------------------------
     #  Message Builder
@@ -168,8 +188,8 @@ class Agent:
 
         context_text = self._format_context_as_text()
         short_term_memory_text = self._format_short_term_memory_as_text()
-        long_term_memory_text = self._format_long_term_memory_as_text(
-            user_input
+        long_term_memory_text, long_term_memory_embedding_cost = (
+            self._format_long_term_memory_as_text(user_input)
         )
 
         # Monta as seções do system_prompt
@@ -195,7 +215,7 @@ class Agent:
             HumanMessage(content=user_input),
         ]
 
-        return messages
+        return messages, long_term_memory_embedding_cost
 
         # ---------------------------------------------------------------------
 
@@ -229,24 +249,42 @@ class Agent:
                 "cost_usd": 0,
             }
 
-        messages = self._build_messages(message)
+        messages, long_term_memory_embedding_cost = self._build_messages(
+            message
+        )
 
         chat_model = ChatOpenAI(
             model=self.model,
             temperature=self.temperature,
         )
+        if self.structured_output:
+            if self.structured_output_mode is not None:
+                chat_model = chat_model.with_structured_output(
+                    self.structured_output,
+                    method=self.structured_output_mode,
+                )
+            else:
+                chat_model = chat_model.with_structured_output(
+                    self.structured_output
+                )
 
         with get_openai_callback() as cb:
             resp = chat_model.invoke(messages)
 
-        content = getattr(resp, "content", str(resp))
+        if self.structured_output:
+            content = resp.model_dump()
+        else:
+            content = resp.content
+
+        ltm = long_term_memory_embedding_cost or {}
 
         return {
             "response": content,
-            "tokens_prompt": cb.prompt_tokens,
-            "tokens_completion": cb.completion_tokens,
-            "tokens_total": cb.total_tokens,
-            "cost_usd": cb.total_cost,
+            "tokens_prompt": cb.prompt_tokens + ltm.get("tokens_prompt", 0),
+            "tokens_completion": cb.completion_tokens
+            + ltm.get("tokens_completion", 0),
+            "tokens_total": cb.total_tokens + ltm.get("tokens_total", 0),
+            "cost_usd": cb.total_cost + ltm.get("cost_usd", 0.0),
         }
 
 

@@ -399,9 +399,13 @@ class LongTermMemoryProvider(MemoryProvider):
         """
 
         # Generate embedding
-        query_embedding, embedding_cost = self._embed_query(query)
+        query_embedding, long_term_memory_embedding_cost = self._embed_query(
+            query
+        )
 
-        logger.info(f"Get Long Term Memory Result: {embedding_cost}")
+        # logger.info(
+        #     f"Query Embedding to Get Long Term Memory Result: {long_term_memory_embedding_cost}"
+        # )
 
         # Perform vector search in the database
         with Session(self._engine) as session:
@@ -447,4 +451,4 @@ class LongTermMemoryProvider(MemoryProvider):
             for row in rows
         ]
 
-        return similar_messages
+        return similar_messages, long_term_memory_embedding_cost

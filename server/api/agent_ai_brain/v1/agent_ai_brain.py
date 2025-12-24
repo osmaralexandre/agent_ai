@@ -100,7 +100,7 @@ def agent_ai_brain(request_body: AgentAIBrainRequest):
         # ---------------------------------------------------------------------
         rewriter_result = manager.run("rewriter", request_body.message)
 
-        logger.info(f"Rewriter: {rewriter_result}")
+        logger.info(f"Rewriter + Get LTM: {rewriter_result}")
 
         # ---------------------------------------------------------------------
         # 3. Embedding Search Agent to retrieve relevant documents and for intent classification
@@ -116,13 +116,20 @@ def agent_ai_brain(request_body: AgentAIBrainRequest):
         )
         logger.info(f"Embedding Search: {embedding_result}")
 
-        top1_score = similar_docs[0]["score"]
-        agent_tool = similar_docs[0]["application"]
+        # ---------------------------------------------------------------------
+        # 4. Intent Classifier Agent
+        # ---------------------------------------------------------------------
+        agent_name = "intent_classifier"
+        intent_classifier_agent_result = manager.run(
+            agent_name, rewriter_result["response"]
+        )
+        logger.info(f"Intent Classifier: {intent_classifier_agent_result}")
 
-        if (agent_tool == "user_manual") & (top1_score > 0.5):
+        agent_tool = intent_classifier_agent_result["response"]["intent"]
+        if agent_tool == "user_manual":
             agent_name = "user_manual"
             # -----------------------------------------------------------------
-            # 4. User Manual Tool Agent
+            # 5. User Manual Tool Agent
             # -----------------------------------------------------------------
             context = "\n\n".join([doc["content"] for doc in similar_docs])
 
@@ -149,9 +156,37 @@ def agent_ai_brain(request_body: AgentAIBrainRequest):
 
             logger.info(f"User Manual: {intent_classifier_result}")
 
+        elif agent_tool == "device_alarms":
+            agent_name = "device_alarms"
+            # -----------------------------------------------------------------
+            # 6. Device Alarms Tool Agent
+            # -----------------------------------------------------------------
+
+            request_body = {
+                "user_id": request_body.user_id,
+                "session_id": request_body.session_id,
+                "client_hash": request_body.client_hash,
+                "message": rewriter_result["response"],
+            }
+
+            headers = {
+                "accept": "application/json",
+                "Content-Type": "application/json",
+            }
+
+            response = requests.post(
+                "http://localhost:8000/v1/device_alarms",
+                headers=headers,
+                json=request_body,
+            )
+
+            intent_classifier_result = response.json()
+
+            logger.info(f"Device Alarms + Get LTM: {intent_classifier_result}")
+
         else:
             # -----------------------------------------------------------------
-            # 5. Energy Only Tool Agent
+            # 7. Energy Only Tool Agent
             # -----------------------------------------------------------------
             agent_name = "energy_only"
             intent_classifier_result = manager.run(
@@ -165,13 +200,14 @@ def agent_ai_brain(request_body: AgentAIBrainRequest):
         )
 
         # ---------------------------------------------------------------------
-        # 5. Cost Calculation
+        # 8. Cost Calculation
         # ---------------------------------------------------------------------
         cost_results_dicts = [
             input_guardrail_result,
             add_user_long_term_memory_result,
             rewriter_result,
             embedding_result,
+            intent_classifier_agent_result,
             intent_classifier_result,
         ]
 

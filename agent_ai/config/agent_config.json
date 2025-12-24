@@ -15,6 +15,16 @@
             "prompt_name": "rewrite_query_by_memory",
             "use_context": false,
             "use_memory_history": true
+        },
+        "intent_classifier": {
+            "model": "gpt-4o-mini",
+            "enabled": true,
+            "temperature": 0.0,
+            "prompt_name": "intent_classifier",
+            "use_context": false,
+            "use_memory_history": false,
+            "structured_output": "IntentClassifier",
+            "structured_output_mode": "json_schema"
         }
     },
     "tool_agents": {
@@ -33,6 +43,16 @@
             "prompt_name": "user_manual",
             "use_context": true,
             "use_memory_history": false
+        },
+        "device_alarms": {
+            "model": "gpt-4o-mini",
+            "enabled": true,
+            "temperature": 0.0,
+            "prompt_name": "device_alarms",
+            "use_context": false,
+            "use_memory_history": true,
+            "structured_output": "AlarmQuery",
+            "structured_output_mode": "json_schema"
         }
     },
     "embeddings": {
