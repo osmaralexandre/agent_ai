@@ -5,9 +5,8 @@ import logging
 import os
 import re
 from pathlib import Path
-from typing import Optional
 
-import numpy as np
+import fitz
 import psycopg2
 from dotenv import load_dotenv
 from langchain.text_splitter import RecursiveCharacterTextSplitter
@@ -56,7 +55,7 @@ def prepare_text_for_embedding(
 ) -> str:
     """
     Prepara texto bruto para geração de embeddings.
-    
+
     Parâmetros
     ----------
     text : str
@@ -67,7 +66,7 @@ def prepare_text_for_embedding(
         Remove tags HTML simples.
     collapse_spaces : bool
         Normaliza múltiplos espaços e quebras de linha.
-    
+
     Retorna
     -------
     str : texto limpo, normalizado e pronto para embedding.
@@ -82,7 +81,7 @@ def prepare_text_for_embedding(
     # 3. Remover HTML (simples)
     if strip_html:
         text = re.sub(r"<[^>]+>", " ", text)
-        
+
     # 4. Remover múltiplas quebras de linha
     text = re.sub(r"\n{3,}", "\n\n", text)
 
@@ -188,21 +187,53 @@ def chunk_markdown(content: str):
 
     return splitter.split_text(content)
 
+def chunk_pdf(pdf_path: str):
+    """
+    Lê um PDF e usa RecursiveCharacterTextSplitter para quebrar
+    o conteúdo em pedaços consistentes.
+
+    Returns
+    -------
+    List[str]
+        Lista de chunks de texto
+    """
+
+    doc = fitz.open(pdf_path)
+    content = []
+
+    for page in doc:
+        text = page.get_text()
+        if text.strip():
+            content.append(text)
+
+    content = "\n".join(content)
+
+    splitter = RecursiveCharacterTextSplitter(
+        chunk_size=600,
+        chunk_overlap=100,
+        separators=[
+            "\n\n",
+            "\n",
+            " ",
+            "",
+        ],
+        length_function=len,
+    )
+
+    return splitter.split_text(content)
 
 # -------------------------------------------------------------------
 # Main pipeline
 # -------------------------------------------------------------------
-def process_markdown_files():
+def process_files():
     config = load_config()
 
     embedding_model_name = config.get("embeddings", {}).get(
         "model", DEFAULT_EMBEDDING_MODEL
     )
-    embedding_dimensions = config.get("embeddings", {}).get(
-        "dimensions", 1536
-    )
+    embedding_dimensions = config.get("embeddings", {}).get("dimensions", 1536)
 
-    folder_path = "server/api/user_manual_tool/markdowns/eólica"
+    folder_path = "server/api/user_manual_tool/pdfs/eólica"
 
     conn = psycopg2.connect(**DB_PARAMS)
     cursor = conn.cursor()
@@ -210,18 +241,21 @@ def process_markdown_files():
 
     try:
         for file in os.listdir(folder_path):
-            if not file.endswith(".md"):
-                continue
-
             file_path = os.path.join(folder_path, file)
-            logging.info(f"Processando arquivo: {file}")
 
-            with open(file_path, "r", encoding="utf-8") as f:
-                raw_content = f.read()
+            if file.endswith(".md"):
+                with open(file_path, "r", encoding="utf-8") as f:
+                    raw_content = f.read()
 
-            clean_content = clean_text(raw_content)
-            treated_content = prepare_text_for_embedding(clean_content)
-            chunks = chunk_markdown(treated_content)
+                clean_content = clean_text(raw_content)
+                treated_content = prepare_text_for_embedding(clean_content)
+                chunks = chunk_markdown(treated_content)
+
+            elif file.endswith(".pdf"):
+                chunks = chunk_pdf(file_path)
+
+            else:
+                continue
 
             logging.info(f"{len(chunks)} chunks gerados para {file}")
 
@@ -287,4 +321,4 @@ def process_markdown_files():
 # Main
 # -------------------------------------------------------------------
 if __name__ == "__main__":
-    process_markdown_files()
+    process_files()
